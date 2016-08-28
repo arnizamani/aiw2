@@ -11,54 +11,55 @@ import Domains.PropLogic
 import Domains.English
 import Domains.XOR
 
+import           Data.Char
 import qualified Data.Function as F
-import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Data.Char
+import           Data.List
+import           Data.Maybe
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import           Data.Time
+import Debug.Trace
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Builder
-import Data.Maybe
-import Data.List
 import Control.Monad
 import Control.Monad.Trans(liftIO)
 import Control.Concurrent.MVar
-import Data.Time
-import qualified Data.Text as T
 import Control.Concurrent (forkIO,takeMVar,newEmptyMVar,putMVar)
 import Test.QuickCheck hiding (generate)
 import System.IO 
-import Debug.Trace
 
-data SavedState = Saved | Unsaved deriving Eq 
 
+data SavedState  = Saved | Unsaved deriving Eq 
 data LoadedState = Loaded | Free deriving Eq
 
 type ProgramData  = Agent
-type ProgramState = (SavedState,ProgramData)
+type ProgramState = (SavedState, ProgramData)
 
 data RunMode  = Auto | Manual deriving Eq
-
 data RunState = Running | Singlestep | Stopped deriving Eq
 
 appName = "Alice in Wonderland"
-appVersion = "1.1"
+appVersion = "2.0"
 appTitle = appName ++ " v" ++ appVersion
 
 
 main = do
--- new mvars for holding program state
+    -- new mvars for holding program state
     loadedAgentMvar  <- newEmptyMVar
     currentAgentMvar <- newEmptyMVar
     runState         <- newEmptyMVar
     putMVar runState Stopped
     scoreMvar        <- newEmptyMVar
     putMVar scoreMvar ([] :: [(Int,Int)])
--- start GUI
+    
+    -- start GUI
     initGUI -- must be called before starting a GUI program
     widgetSetDefaultDirection TextDirLtr -- default direction is LTR
     builder <- builderNew
     builderAddFromFile builder "AIW-GUI.glade" -- load glade file (xml)
--- initialize graphical elements, assign event handlers, etc.
+    
+    -- initialize graphical elements, assign event handlers, etc.
     assignEventHandlers builder loadedAgentMvar currentAgentMvar runState scoreMvar
     winMain <- builderGetObject builder castToWindow "windowMain"
     filechooserDomain <- builderGetObject builder castToFileChooserButton "filechooserDomain"
@@ -68,17 +69,21 @@ main = do
     widgetHide vboxConsole
     mainGUI                         -- start the main GUI loop to receive events
 
+
 assignEventHandlers builder loadedAgentMvar currentAgentMvar runState scoreMvar = do
     intitializeWindowMain builder loadedAgentMvar currentAgentMvar scoreMvar
     initiateWindowTrain builder loadedAgentMvar currentAgentMvar runState scoreMvar
     initiateDialogNew builder loadedAgentMvar currentAgentMvar
     initiateDialogOpen builder loadedAgentMvar currentAgentMvar
     initiateFileFilter1 builder
-    
+
+
 initiateFileFilter1 builder = do
     fileFilter1 <- builderGetObject builder castToFileFilter "filefilter1"
     fileFilterAddMimeType fileFilter1 "text/plain"
     fileFilterAddPattern fileFilter1 "*.domain"
+
+
 intitializeWindowMain builder loadedAgentMvar currentAgentMvar scoreMvar = do
     winMain <- builderGetObject builder castToWindow "windowMain"
     windowSetTitle winMain appTitle
@@ -196,9 +201,13 @@ intitializeWindowMain builder loadedAgentMvar currentAgentMvar scoreMvar = do
             putMVar currentAgentMvar saved
             return ()
 
+
 fileNew dialogNew = widgetShowAll dialogNew
 
+
 fileOpen dialogOpen = widgetShowAll dialogOpen
+
+
 fileSave loadedAgentMvar currentAgentMvar = do
     loaded' <- tryTakeMVar loadedAgentMvar
     if isNothing loaded'
@@ -215,7 +224,8 @@ fileSave loadedAgentMvar currentAgentMvar = do
                     else do saveAgent False current
                             putMVar loadedAgentMvar current 
                             putMVar currentAgentMvar current 
-    
+
+
 fileClose builder loadedAgentMvar currentAgentMvar = do
   buffer1 <- builderGetObject builder castToTextBuffer "textbuffer1"
   buffer2 <- builderGetObject builder castToTextBuffer "textbuffer2"
@@ -291,6 +301,7 @@ fileClose builder loadedAgentMvar currentAgentMvar = do
                             widgetHide msgBox
                             return True
             return ()
+
 
 initiateWindowTrain builder loadedAgentMvar currentAgentMvar runState scoreMvar = do
     buffer1 <- builderGetObject builder castToTextBuffer "textbuffer1"
@@ -506,8 +517,14 @@ initiateWindowTrain builder loadedAgentMvar currentAgentMvar runState scoreMvar 
                     --                    buffer1 buffer2 buffer3 buffer4 
                     --                    console answer scoreB scoreA closed open
                     --                    currentAgentMvar runState scoreMvar windowTrain
-runMultiItems :: RunMode -> Bool -> Int -> [Item] -> [String] -> Int -> Agent -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> Label -> Label -> Label -> Label -> (MVar Agent) -> MVar RunState -> MVar [(Int,Int)] -> t15 -> IO ()
 
+
+runMultiItems :: RunMode -> Bool -> Int -> [Item] -> [String] -> Int -> Agent
+                 -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer
+                 -> TextBuffer -> TextBuffer
+                 -> Label -> Label -> Label -> Label
+                 -> (MVar Agent) -> MVar RunState -> MVar [(Int,Int)]
+                 -> t15 -> IO ()
 runMultiItems Manual True size items prev total agent 
               b1 b2 b3 b4 console answer scoreB scoreA closed open 
               currentAgentMvar runState scoreMvar win = do
@@ -569,6 +586,8 @@ runMultiItems Manual True size items prev total agent
                                            "binds: \n" ++ unlines (map show binds) ++ 
                                            "intersected: \n" ++ unlines (map show intersected)
                                           )
+
+
 getFunc :: String -> (Int -> Gen Item)
 getFunc domain = case domain of
                                 "addition" -> additionItem
@@ -591,7 +610,8 @@ getFunc domain = case domain of
                                 "greaterthan" -> greaterThanItem
                                 "greaterthanequal" -> greaterThanEqualItem
                                 "other (load file)" -> undefined
-                                
+
+
 mergeS :: (Eq a, Eq b) => [[(a,b)]] -> [[(a,b)]] -> [[(a,b)]]
 mergeS [] _ = []
 mergeS _ [] = []
@@ -611,8 +631,13 @@ mergeS xs ys = filter (not . null) $
         --         [[("x",(1)),("y",(1))]]
         --      solution: [[("x",(1)),("y",(1))]]
 
-runFile :: Bool -> Int -> [Item] -> [String] -> Int -> Agent -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> Label -> Label -> Label -> Label -> (MVar Agent) -> MVar RunState -> MVar [(Int,Int)] -> t15 -> IO ()
 
+runFile :: Bool -> Int -> [Item] -> [String] -> Int -> Agent
+           -> TextBuffer -> TextBuffer -> TextBuffer
+           -> TextBuffer -> TextBuffer -> TextBuffer
+           -> Label -> Label -> Label -> Label
+           -> MVar Agent -> MVar RunState -> MVar [(Int,Int)]
+           -> t15 -> IO ()
 runFile test size items prev total agent 
               b1 b2 b3 b4 console answer scoreB scoreA closed open 
               currentAgentMvar runState scoreMvar win = do
@@ -654,8 +679,13 @@ runFile test size items prev total agent
                 (string : prev) (total+1) newAgent 
                 b1 b2 b3 b4 console answer scoreB scoreA closed open currentAgentMvar runState scoreMvar win
 
-runIterations :: RunMode -> Bool -> Int -> (Int -> Gen Item) -> [String] -> Int -> Agent -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> TextBuffer -> Label -> Label -> Label -> Label -> (MVar Agent) -> MVar RunState -> MVar [(Int,Int)] -> t15 -> IO ()
 
+runIterations :: RunMode -> Bool -> Int -> (Int -> Gen Item) -> [String] -> Int -> Agent
+                 -> TextBuffer -> TextBuffer -> TextBuffer
+                 -> TextBuffer -> TextBuffer -> TextBuffer
+                 -> Label -> Label -> Label -> Label
+                 -> MVar Agent -> MVar RunState -> MVar [(Int,Int)]
+                 -> t15 -> IO ()
 runIterations Manual True size itemGenerator prev total agent 
               b1 b2 b3 b4 console answer scoreB scoreA closed open 
               currentAgentMvar runState scoreMvar win = do
@@ -723,6 +753,7 @@ runIterations runMode test size itemGenerator prev total agent
             postGUISync $ textBufferSetText answer $ showSolution computation
             return ()
 
+
 showIteration buffer2 scoreB scoreA num scores item change = do
     let scoreAfter = sum . map snd $ take showScore scores
     let scoreBefor = sum . map fst $ take showScore scores
@@ -740,6 +771,7 @@ showIteration buffer2 scoreB scoreA num scores item change = do
         start2 <- textBufferGetStartIter buffer2
         textBufferInsert buffer2 start2 change
     else return ()
+
 
 initiateDialogOpen builder loadedAgentMvar currentAgentMvar = do
     dialogOpen <- builderGetObject builder castToWindow "filechooserDialog"
@@ -839,6 +871,8 @@ initiateDialogOpen builder loadedAgentMvar currentAgentMvar = do
                             dialogRun msgBox
                             widgetHide msgBox
                             return ()
+
+
 showAgent buffer1 buffer2 closedAxioms openAxioms
           agent@(Agent comm (width,depth,axiom,_) (axioms,concepts,graph,pats,rew,rem)) = do
     let axs = filter (not . axIsFact) . Set.toList $ Set.union (ltmAxioms axioms) (ltmFacts axioms)
@@ -860,6 +894,7 @@ showAgent buffer1 buffer2 closedAxioms openAxioms
     when (oldClosed /= newClosed) $ labelSetText closedAxioms newClosed
     when (oldOpen /= newOpen) $ labelSetText openAxioms newOpen    
     
+
 initiateDialogNew builder loadedAgentMvar currentAgentMvar = do
   dialogNew <- builderGetObject builder castToWindow "dialogNew"
   dialogNew `on` deleteEvent $ do
@@ -916,7 +951,8 @@ initiateDialogNew builder loadedAgentMvar currentAgentMvar = do
                     dialogRun msgBox
                     return ()
 
--- quitProgram :: MVar Agent -> MVar Agent -> IO Bool
+
+quitProgram :: MVar Agent -> MVar Agent -> IO Bool
 quitProgram loadedAgentMvar currentAgentMvar = do
     loaded <- tryTakeMVar loadedAgentMvar
     current <- tryTakeMVar currentAgentMvar
@@ -962,6 +998,7 @@ quitProgram loadedAgentMvar currentAgentMvar = do
 
 forkIO' x = forkIO x >> return ()
 
+
 printConsole console str = postGUIAsync  $ do
     start   <- textBufferGetStartIter console
     textBufferInsert console start $ str ++ "\n"
@@ -973,5 +1010,3 @@ printConsole console str = postGUIAsync  $ do
 --runIterations Manual True size itemGenerator prev total agent 
 --              b1 b2 b3 b4 console answer scoreB scoreA closed open 
 --              currentAgentMvar runState scoreMvar win = do
-
-

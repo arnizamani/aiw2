@@ -1,5 +1,4 @@
-# aiw2
-Alice In Wonderland, version 2.0
+# Alice In Wonderland, version 2.0 (AIW2)
 
 Authors: Abdul Rahim Nizamani and Claes Strannegård
 Updated: 2016

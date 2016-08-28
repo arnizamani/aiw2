@@ -17,3 +17,18 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
+
+# Additional files not related to the code
+*.pdf
+*.pptx
+*.dll
+*.png
+*.jpg
+*.ico
+*.txt
+*.c
+*.agent
+*.ini
+*.exe
+*.iss
+.dropbox
