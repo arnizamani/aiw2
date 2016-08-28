@@ -2,13 +2,16 @@ module Domains.PropLogic (truthItem,tautItem) where
 
 import Instances
 import Parsing
+
 import Data.List
 import qualified Data.Map as Map
 import Test.QuickCheck
 
+
 top = "⊤"
 bot = "⊥"
 neg = "¬"
+
 
 tautItem :: Int -> Gen Item
 tautItem s = do
@@ -26,6 +29,7 @@ tautItem s = do
         then return $ Item "Logic" lhsF (Root "⊤") viabN Nothing
         else return $ Item "Logic" lhsT (Root "⊤") viabP Nothing
 
+
 -- random Item for addition facts
 logicItem :: Int -> Gen Item
 logicItem s = do
@@ -40,12 +44,14 @@ logicItem s = do
             then logicItem s
             else return $ Item "Logic" lhs rhs viab Nothing
 
+
 varToRoot :: Exp -> Exp
 varToRoot e = case e of
                 Var v        -> makeR v
                 Root r       -> makeR r
                 Unary u e    -> Unary u (varToRoot e)
                 Binary b e f -> Binary b (varToRoot e) (varToRoot f)
+
 
 rootToVar :: Exp -> Exp
 rootToVar e = case e of
@@ -65,12 +71,14 @@ tautExp size = do
     then return (exp,True)
     else tautExp size
 
+
 contraExp :: Int -> Gen (Exp,Bool)
 contraExp size = do
     exp <- logicExp' size
     if isContradiction exp
     then return (exp,False)
     else contraExp size
+
 
 logicExp :: Int -> Gen (Exp,Bool)
 logicExp size = do
@@ -81,6 +89,8 @@ logicExp size = do
             then return (exp,False)
             else logicExp size
 
+
+-- helper function for logicExp
 logicExp' :: Int -> Gen Exp
 logicExp' size | size < 2 = frequency [(10,return $ makeV "P"),(10,return $ makeV "Q"),(10,return $ makeV "R"),(1,return $ makeR top),(1,return $ makeR bot)]
 logicExp' 2 = do e <- logicExp' 1
@@ -101,7 +111,9 @@ makeBindings (s:ss) =
     let s' = makeBindings ss
     in [(s,Root "⊤") : x | x <- s'] ++ [(s,Root "⊥") : x | x <- s']
 
+
 e = read "(⊥ ∨ P)" :: Exp
+
 
 isTautology :: Exp -> Bool
 isTautology e | null (getVars e) = isTrue e
@@ -110,6 +122,7 @@ isTautology e =
         bindings = makeBindings vars
         exps = map (\bind -> replaceAllSubExp e $ Map.fromList bind) bindings
     in all isTrue exps
+
 
 isContradiction :: Exp -> Bool
 isContradiction e | null (getVars e) = not $ isTrue e
@@ -123,7 +136,9 @@ isContradiction e =
 -- posViability = frequency [(1000,return 1),(100,return 2),(10,return 3),(1,return 4)]
 posViability = frequency [((1001 - n * n * n),return n) | n <- [1..10]]
 negViability = frequency [(1000,return (-1)),(100,return (-2)),(10,return (-3)),(1,return (-4))]
+
 randomSize = frequency [(900,return 3),(90,return 5),(9,return 7),(1,return 9)] -- (3,90%), (5,31.8%), (7,21.6%), (9,8.0%) total = 91+75+51+19=236
+
 
 -- random Item for addition facts
 truthItem :: Int -> Gen Item
@@ -146,6 +161,7 @@ truthItem s = do
                 then truthItem s
                 else return $ Item "Logic" lhs rhsP viabP Nothing
 
+
 truthExp :: Int -> Gen Exp
 truthExp size | size < 2 = oneof [(return $ makeR "⊤"),(return $ makeR "⊥")]
 truthExp 2 = do e <- truthExp 1
@@ -158,6 +174,7 @@ truthExp size = do
     op <- operatorTruth
     oneof $ map return [makeB op x y,makeB op y x,makeU neg z]
 
+
 isTrue :: Exp -> Bool
 isTrue (Root e) | e == top = True
 isTrue (Root e) | e == bot = False
@@ -169,5 +186,6 @@ isTrue e = case e of
     (Binary (Oper "↔") e1 e2) -> isTrue e1 == isTrue e2
     (Var _) -> error "isTrue: Variable in constant expression."
     x       -> error $ "isTrue: Unknown expression " ++ show x
+
 
 operatorTruth = oneof [(return "∨"),(return "∧"),(return "→"),(return "↔")]

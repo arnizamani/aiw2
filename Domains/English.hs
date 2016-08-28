@@ -1,27 +1,36 @@
 module Domains.English where
 
 import Instances
+
 import Test.QuickCheck
 
-nounS = ["Alice","Bob"] -- ,"John","George","Paul","David"]
-nounP = ["Cars","Houses"]
-verbS = ["runs","plays"] -- ,"walks","takes"]
-verbP = ["move","hide"]
-pronounS = ["He","She"]
-pronounP = ["We","They"]
-adverb = ["slowly","suddenly"]
 
-templates2 = [  (nounS,verbS),
-                (nounP,verbP),
-                (pronounS,verbS),
-                (pronounP,verbP) ]
-templates3 = [  (nounS,verbS,adverb),
-                (nounP,verbP,adverb),
-                (pronounS,verbS,adverb),
-                (pronounP,verbP,adverb)
-                ]
+nounS = ["Alice", "Bob"]
+nounP = ["Cars", "Houses"]
+
+verbS = ["runs", "plays"]
+verbP = ["move", "hide"]
+
+pronounS = ["He", "She"]
+pronounP = ["We", "They"]
+
+adverb = ["slowly", "suddenly"]
+
+
+templates2 = [  (nounS, verbS),
+                (nounP, verbP),
+                (pronounS, verbS),
+                (pronounP, verbP)
+             ]
+templates3 = [  (nounS, verbS, adverb),
+                (nounP, verbP, adverb),
+                (pronounS, verbS, adverb),
+                (pronounP, verbP, adverb)
+             ]
+
 
 words' = nounS ++ nounP ++ verbS ++ verbP ++ pronounS ++ pronounP ++ adverb
+
 
 sentence2 = do
     template <- oneof $ map return templates2
@@ -30,6 +39,7 @@ sentence2 = do
     let sentence = Binary (Oper "#") (Root x) (Root y)
     return sentence
 
+
 sentence3 = do
     template <- oneof $ map return templates3
     x <- oneof . map return $ fst' template
@@ -37,7 +47,8 @@ sentence3 = do
     z <- oneof . map return $ thd' template
     let sentence = Binary (Oper "#") (Binary (Oper "#") (Root x) (Root y)) (Root z)
     return sentence
-    
+
+
 nonSentences = 
     [Root w | w <- words']
     ++
@@ -50,6 +61,7 @@ nonSentences =
     [Binary (Oper "#") (Root v) (Root p) | p <- pronounP, v <- pronounS]
     ++
     [Binary (Oper "#") (Root v) (Root p) | p <- verbP, v <- verbS]
+
 
 -- random Item for addition facts
 langItem :: Int -> Gen Item

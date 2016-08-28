@@ -1,18 +1,25 @@
-module Domains.Arithmetic (arithItem,multItem,subtItem,diviItem,additionItem,evenItem,oddItem,mod3Item,
-                           addItems,lessThanItem,greaterThanItem,lessThanEqualItem,greaterThanEqualItem) where
+module Domains.Arithmetic (arithItem, multItem, subtItem, diviItem,
+                           additionItem, evenItem, oddItem, mod3Item, addItems,
+                           lessThanItem, greaterThanItem, lessThanEqualItem,
+                           greaterThanEqualItem) where
 
 import Instances
+
 import Data.Maybe
 import Test.QuickCheck
 import System.IO
+
+
 generat :: Gen a -> IO a
 generat g = do
     values <- sample' g
     return $ head values
 
+
 -- even 0 = T
 -- even 1 = F
 -- even (x # y) = even y
+
 
 additionItem' = do
         size <- frequency [(800,return 3),(150,return 5),(40,return 7),(10,return 9)]
@@ -30,6 +37,7 @@ additionItem' = do
              then additionItem'
              else return $ Item "Arith" lhs rhsP viabP Nothing
 
+
 saveFile :: IO ()
 saveFile = do
     items <- mapM (\x -> generat additionItem') [1..10000]
@@ -40,11 +48,14 @@ saveFile = do
     hFlush out
     hClose out
 
+
 oddItem :: Int -> Gen Item
 oddItem _ = oddeven odd "odd"
 
+
 evenItem :: Int -> Gen Item
 evenItem _ = oddeven even "even"
+
 
 mod3Item :: Int -> Gen Item
 mod3Item _ = oddeven (\x -> x `mod` 3 == 0) "mod3"
@@ -64,6 +75,7 @@ oddeven f fname = do
         then return $ Item "Arith" lhs rhsP viabP Nothing
         else return $ Item "Arith" lhs rhsN viabN Nothing
 
+
 check "0" = True
 check "1" = False
 check "2" = True
@@ -75,7 +87,6 @@ check "7" = False
 check "8" = True
 check "9" = False
 check x   = error $ "check: " ++ x
-
 
     
 -- random Item for arithmetic
@@ -101,6 +112,7 @@ arithItem s = do
              if lhs == rhsP
                  then arithItem s
                  else return $ Item "Arith" lhs rhsP viabP Nothing
+
 
 -- random Item for addition facts
 additionItem :: Int -> Gen Item
@@ -144,6 +156,7 @@ additionItem s = do
                   then additionItem s
                   else return $ Item "Arith" lhs rhsP viabP Nothing
 
+
 -- random Item for multiplication facts
 multItem :: Int -> Gen Item
 multItem s | s < 0 = multItem 500
@@ -184,6 +197,7 @@ multItem s = do
               if lhs == rhsP
                   then multItem s
                   else return $ Item "Arith" lhs rhsP viabP Nothing
+
 
 -- random Item for subtraction facts
 subtItem :: Int -> Gen Item
@@ -226,7 +240,8 @@ subtItem s = do
                 then subtItem s
                 else return $ Item "Arith" lhs rhsP viabP Nothing
 
--- random Item for subtraction facts
+
+-- random Item for division facts
 diviItem :: Int -> Gen Item
 diviItem s | s < 0 = diviItem 500
 diviItem s | s <= 10 = do
@@ -267,7 +282,8 @@ diviItem s = do
             if lhs == rhsP
                 then diviItem s
                 else return $ Item "Arith" lhs rhsP viabP Nothing
-                
+
+
 -- list of pedagogic addition facts, not complete
 addItems :: IO [Item]
 addItems = do
@@ -290,6 +306,7 @@ addItems = do
     let items = items0 ++ items1 ++ items2 ++ items3 ++ items4 ++ items5
     return $ items
 
+
 greaterThanEqualItem :: Int -> Gen Item
 greaterThanEqualItem _ = do
         viabP <- posViability
@@ -302,6 +319,7 @@ greaterThanEqualItem _ = do
         if answer
         then return $ Item "GE" (Binary (Oper "≥") (makeExp lhs) (makeExp rhs)) (Root "T") viabP Nothing
         else return $ Item "GE" (Binary (Oper "≥") (makeExp lhs) (makeExp rhs)) (Root "T") viabN Nothing
+
 
 greaterThanItem :: Int -> Gen Item
 greaterThanItem _ = do
@@ -316,6 +334,7 @@ greaterThanItem _ = do
         then return $ Item "GT" (Binary (Oper ">") (makeExp lhs) (makeExp rhs)) (Root "T") viabP Nothing
         else return $ Item "GT" (Binary (Oper ">") (makeExp lhs) (makeExp rhs)) (Root "T") viabN Nothing
 
+
 lessThanEqualItem :: Int -> Gen Item
 lessThanEqualItem _ = do
         viabP <- posViability
@@ -328,6 +347,7 @@ lessThanEqualItem _ = do
         if answer
         then return $ Item "LE" (Binary (Oper "≤") (makeExp lhs) (makeExp rhs)) (Root "T") viabP Nothing
         else return $ Item "LE" (Binary (Oper "≤") (makeExp lhs) (makeExp rhs)) (Root "T") viabN Nothing
+
 
 lessThanItem :: Int -> Gen Item
 lessThanItem _ = do
@@ -342,6 +362,7 @@ lessThanItem _ = do
         then return $ Item "LT" (Binary (Oper "<") (makeExp lhs) (makeExp rhs)) (Root "T") viabP Nothing
         else return $ Item "LT" (Binary (Oper "<") (makeExp lhs) (makeExp rhs)) (Root "T") viabN Nothing
 
+
 randomNumber :: Int -> Gen Int
 randomNumber n | n < 2 = oneof $ map return [0..9]
 randomNumber n = do
@@ -349,8 +370,10 @@ randomNumber n = do
     n2 <- randomNumber 1
     return (n1 * 10 + n2)
 
+
 operatorMul = frequency [(5,return "#"),(1,return "*"),(1,return "+")] -- ,(1,return "_")]
 operatorAdd = frequency [(1,return "+"),(1,return "#")]
+
 
 solveArith :: Exp -> Maybe Int
 solveArith e | containsVar e = Nothing -- error "solveArith: Exp contains variable."
@@ -396,18 +419,15 @@ solveArith e = case e of
                                         else Nothing
     e -> error $ "solveArith: Unknown expression " ++ show e
 
+
 makeExp :: Int -> Exp
 makeExp n | n < 0 = makeU "-" (makeExp (0-n))
 -- makeExp n | n < 10 = Root (show n)
 makeExp n = foldl1 (\x y -> makeB "#" x y) [makeR [d] | d <- show n]
 
+
 arithExp :: Int -> Gen Exp
 arithExp size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
---arithExp size | size <= 4 = do
---    x <- frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
---    y <- frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
---    op <- operatorMul
---    return $ makeB op x y
 arithExp size' = do
     let size = if odd size' then size' else size' - 1
     (d1,d2) <- oneof $ map return $ [(i,size-1-i) | i <- [1..(size-2)], odd i && odd (size-1-i)]
@@ -416,16 +436,7 @@ arithExp size' = do
     op <- operatorMul
     exp <- oneof $ map return [makeB op x y,makeB op y x]
     return exp
-{-
-additionExp size' = do
-    let size = if odd size' then size' else size' - 1
-    (d1,d2) <- oneof $ map return $ [(i,size-1-i) | i <- [1..(size-2)], odd i && odd (size-1-i)]
-    x <- additionExp (size - d1)
-    y <- additionExp (size - d2)
-    op <- operatorAdd
-    exp <- oneof $ map return [makeB op x y,makeB op y x]
-    return exp
--}
+
 
 additionExp :: Int -> Gen Exp
 additionExp size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
@@ -438,6 +449,7 @@ additionExp size' = do
     exp <- oneof $ map return [makeB op x y,makeB op y x]
     return exp
 
+
 multExp :: Int -> Gen Exp
 multExp size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
 multExp size' = do
@@ -448,6 +460,7 @@ multExp size' = do
     op <- return "*"
     exp <- oneof $ map return [makeB op x y,makeB op y x]
     return exp
+
 
 subtExp :: Int -> Gen Exp
 subtExp size | size <= 1 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
@@ -462,6 +475,7 @@ subtExp size' = do
     op <- return "_"
     exp <- oneof $ map return [makeB op x y,makeB op y x]
     return exp
+
 
 diviExp :: Int -> Gen Exp
 diviExp size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
@@ -479,8 +493,8 @@ diviExp size' = do
          then oneof $ map return [makeB op x y]
          else diviExp size'
 
+
 -- posViability = frequency [(1000,return 1),(100,return 2),(10,return 3),(1,return 4)]
 posViability = frequency [((1001 - n * n * n),return n) | n <- [1..10]]
 negViability = frequency [(1000,return (-1)),(100,return (-2)),(10,return (-3)),(1,return (-4))]
 randomSize = frequency [(900,return 3),(90,return 5),(9,return 7),(1,return 9)] -- (3,90%), (5,31.8%), (7,21.6%), (9,8.0%) total = 91+75+51+19=236
-

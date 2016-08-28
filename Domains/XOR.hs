@@ -1,15 +1,19 @@
 module Domains.XOR where
 
+import Instances
+
 import Data.Bits
 import Numeric
-import Instances
 import Test.QuickCheck
 
+
 type Decimal = Int
-type Binary = [Int]
+type Binary  = [Int]
+
 
 makeExpB :: Decimal -> Exp
 makeExpB n = formExp $ showIntAtBase 2 (head . show) n ""
+
 
 additionDec :: Int -> Gen Exp
 additionDec size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
@@ -22,6 +26,8 @@ additionDec size' = do
     case y of
       (Binary (Oper "#") _ _) -> return (makeB "D+" x y)
       _ -> return (makeB op x y)
+
+
 multiplicationDec :: Int -> Gen Exp
 multiplicationDec size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1,2,3,4,5,6,7,8,9]]
 multiplicationDec size' = do
@@ -34,6 +40,7 @@ multiplicationDec size' = do
       (Binary (Oper "#") _ _) -> return (makeB "D*" x y)
       _ -> return (makeB op x y)
 
+
 xorAddDecimal :: Int -> Gen Item
 xorAddDecimal s = do
     size <- randomSize
@@ -44,6 +51,8 @@ xorAddDecimal s = do
     if lhs == rhs
         then xorAddDecimal s
         else return $ Item "xorAddDecimal" lhs rhs viab Nothing
+
+
 xorMulDecimal :: Int -> Gen Item
 xorMulDecimal s = do
     size <- randomSize
@@ -55,6 +64,7 @@ xorMulDecimal s = do
         then xorMulDecimal s
         else return $ Item "XorMulDecimal" lhs rhs viab Nothing
 
+
 xorAddBinary :: Int -> Gen Item
 xorAddBinary s = do
         size <- randomSize
@@ -65,6 +75,7 @@ xorAddBinary s = do
         if lhs == rhs
                 then xorAddBinary s
                 else return $ Item "XorAddBinary" lhs rhs viab Nothing
+
 
 additionBin :: Int -> Gen Exp
 additionBin size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1]]
@@ -78,6 +89,7 @@ additionBin size' = do
       (Binary (Oper "#") _ _) -> return (makeB "B+" x y)
       _ -> return (makeB op x y)
 
+
 multiplicationExpBin :: Int -> Gen Exp
 multiplicationExpBin size | size <= 2 = frequency [((10 - n),return (makeR $ show n)) | n <- [0,1]]
 multiplicationExpBin size' = do
@@ -90,6 +102,7 @@ multiplicationExpBin size' = do
       (Binary (Oper "#") _ _) -> return (makeB "B*" x y)
       _ -> return (makeB op x y)
 
+
 xorMulBinary :: Int -> Gen Item
 xorMulBinary s = do
         size <- randomSize
@@ -101,6 +114,8 @@ xorMulBinary s = do
                 then xorMulBinary s
                 else return $ Item "XorMulBinary" lhs rhs viab Nothing
 
+
+-- convert binary (list of 0s and 1s) to decimal number
 binToDecimal :: [Int] -> Int
 binToDecimal [] = 0
 binToDecimal [x] = x
@@ -114,6 +129,7 @@ binToDecimal xs = (binToDecimal (init xs)) * 2 + (last xs)
 --          A*B[1] = [ (A[0] * B[1]) + (A[1] * B[0]) ] % 2 = (a*y+b*x)%2
 --          A*B[2] = [ (A[0] * B[2]) + (A[2] * B[0]) + (A[1] * B[1])] % 2 = (a*y+b*x)%2
 
+
 multiply :: [Int] -> [Int] -> [Int]
 multiply [] _ = error "multiply in Domains.XOR"
 multiply x y | length x /= length y = error "multiply in Domains.XOR"
@@ -123,38 +139,48 @@ multiply x y = [
          where x' = zip [0..] x
                y' = zip [0..] y
 
+
 multiplyDec :: Decimal -> Decimal -> Decimal
 multiplyDec x y = binToDecimal . dropWhile (==0) . (uncurry multiply) $ equalLen (decToBinary x,decToBinary y)    
+
 
 decToBinary :: Decimal -> Binary
 decToBinary n | n < 0 = error "decToBinary: negative numbers cannot be converted to binary."
 decToBinary n | n < 2 = [n]
 decToBinary n = decToBinary (n `div` 2) ++ [n `mod` 2]
 
+
 equalLen :: (Binary,Binary) -> (Binary,Binary)
 equalLen (x,y) | length x == length y = (x,y)
 equalLen (x,y) | length x < length y = equalLen (0:x, y)
 equalLen (x,y) = equalLen (x, 0:y)
 
+
 equalLength :: Int -> String -> Binary
 equalLength maxLength n = map toInt ((take (min maxLength (maxLength - length n)) $ repeat '0') ++ n)
 
+
+-- Convert binary digits from Char to Int
+toInt :: Char -> Int
 toInt '0' = 0
 toInt '1' = 1
 toInt _   = error "toInt in xorMulBinary"
+
 
 formExp :: String -> Exp
 formExp [] = error "formExp in Domain XOR"
 formExp [x] = Root [x]
 formExp xs@(_:_) = Binary (Oper "#") (formExp (init xs)) (Root [last xs])
 
+
 makeExpD :: Decimal -> Exp
 makeExpD n | n < 0 = makeU "-" (makeExpD (0-n))
 makeExpD n = foldl1 (\x y -> makeB "#" x y) [makeR [d] | d <- show n]
 
-posViability = frequency [((1001 - n * n * n),return n) | n <- [1..10]]
 
-randomSize = frequency [(900,return 3),(90,return 5),(9,return 7),(1,return 9)]
+posViability = frequency [((1001 - n * n * n),return n) | n <- [1..10]]
+randomSize   = frequency [(900,return 3),(90,return 5),(9,return 7),(1,return 9)]
+
 
 solveXorBin :: Exp -> Decimal
 solveXorBin e | containsVar e = error "solveXorBin: Exp contains variable."
@@ -168,6 +194,7 @@ solveXorBin e = case e of
     -- (Binary (Oper "B_") x y) -> solveXorBin x - solveXorBin y
     -- (Binary (Oper "B/") x y) -> solveXorBin x `div` solveXorBin y
     e -> error $ "solveXorBin: Unknown expression " ++ show e
+
 
 solveXorDec :: Exp -> Decimal
 solveXorDec e | containsVar e = error "solveXorDec: Exp contains variable."
