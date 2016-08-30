@@ -1,261 +1,57 @@
-{-
-
-    x # (x # y) -> (x + x) # y
-    
-    x # (x # y) -> (x + y) # y
-    
-    1(13) -> (1+3)#3
-             4#3
-    
-    1 # (1 # 3) = 4#3
-    
-    Alice: symbolic reasoner and learner
-    Author: Abdul Rahim Nizamani, ITIT, Gothenburg University, Sweden
-    Based on Occam3: improvements for speed-up, including traffic lights-based theory
-    Input: an IP with untagged items
-    Started: 2014-06-26
-
-    + Introduce LTM size
-    + Introduce viability for axioms in the Agent memory
-    + Automatic inclusion of learned axiom
-    + Update viabilities
-    + IP = new item + old theory
-    + Theory update: slide 44
-    - Always store small facts, even if an axiom exists.
-    + Try to store substitutions instead of answers in the shapes.
-    + Sanity check: check negative examples
-    + Show headings
-    + Show latest axioms from theory
-    + Show performance of last ten items
-    + Collector version: check if axiom can be computed in 3 steps before adding it
-    + Decay parameter applies on all axioms
-    + Use only constants for substitutions in computing examples, e.g. fix x + 5 = 5
-    + Use axiom viability and recency in computations
-    + Shape update: only use facts when computing substitutions
-    
-  Meeting 2014-10-14:
-    + At most one non-rewarded symbol in a fact candidate
-    + The first variable in an axiom candidate should always be "x" (or smallest of all variables)
-    + Goal: normal form of goal state, i.e. x # (Root r)
-    + fix logic commutativity axioms: program does not add x & y = y & x
-    + Before score and after score
-    + goal: in normal form (x binary (Root _))
-    different viabilitiy update functions
-    grammar: environment provides parsed trees of grammar
-    - Fix wrong axiom learning: x + x = x * x
-    Grammar: context
-    goal: smallest operator free term, OR:
-    goal: non-reducible operator free term  (preferred definition)
-        1, but not 0 # 1
-        3 # (1 # 2)
-        1 # (2 # 3) is reducible
-        3#3 is not reducible
-    Pedagogical order of the environment to make learning faster.
-    Design test problems for checking theory development
-    Remove all axioms that make a neg item computable, one by one
-  Meeting 2014-10-21:
-    Meaning of t is t'
-    Synonyms: if t and t' both have the same meaning (t'')
-    Context: a tree with a specific empty leaf which can be replaced with t to give c(t)
-    
-    Strongly conservative axioms:
-        x*0 == 0
-        x || y == y ||x
-        Alice == Stella
-    Non-strongly conservative axioms:
-        x*x == x
-    E is compositional: if a part has a meaning, then it will have the same meaning in a larger term.
-    Program should try to increase the total viability of the theory
-    
-    Collect rewarding symbols from current item as well.
-    Find grammar generator programs, or prebuilt parse trees.
-    Show current state: paused, stepwise, continuous, etc.
-    Removing axioms: check if axiom 1 can be proved using any other axiom, if so, remove it.
-    Add indicator in axiom whether it came from environment (fact) or was derived (synonym or open axiom).
-        e.g. Alice=Bob is not a fact (did not come from environment)
-    
-Meeting: 2014-11-04: Claes and Ulf
-    + Open axioms: wrong figure showed
-    + (1+2),(2+1),-1  should not remove (x+y)=(y+x), as (2+1) cannot be a terminal state.
-    + Consistency mode: Boolean,  
-    + Non-redundancy mode: Boolean
-    + be more permissive when adding axioms (Consistency = False)
-    + two-way non-redundancy: remove existing axioms if they are solved by newly added axiom
-    + 1 convergent instance, check 1 random divergence instance
-    + variables should appear in the order in lhs of axiom candidates, e.g. (x+y)+z and not (x+z)+y
-        for (x+y)+x, nub the variable list and check it with sorted order
-    Which axioms from a negative computation should be thrown out? Check one by one, then sets of two, then three, etc.
-Meeting 2014-11-11:
-    Small instance of a rule:
-        context is empty if rule contains variables
-        context has max length 3 if the rule is closed.
-    Identity rules: (not the same as facts, so facts should be indicated in the program)
-        Alice <-> Bob
-    Variables in language:
-        green x -> x
-        x slowly -> x
-    
-    Formulate towers of hanoi
-    Next week: language: better examples, 3 or 4-word
-    
-    Constants in lhs which only appear in rhs (e.g. in logic only T and F)
-    
-Meeting 2014-11-18:    
-    Other domain, which loads environment from a file
-    number sequences: f 0 -> 4
-    a fact contains one operator of arity n, and exactly n constants, so f(0) = 4 will pass it.
-    examples: Alice runs fast -> OK
-    f(x+1) -> f(x) * 2
-    g(x+1,y) -> g(x,y) + y
-    Update viability function to that proposed by Claes (in slides)
-Meeting 2014-11-25:
-    + temporary recognition memory for recently removed axioms, to avoid re-addition
-    + Clear buffers when new agent is opened.
-    # in lang: just once manual example
-    + One step button in training window
-    + New GUI
-    - Recursive definition: add both the fact and the pattern at once
-    does it remove axioms in the language
-    speeding up search for synonyms:
-        Form (closure) sets of word classes: nouns, verbs, adverbs, etc.
-        meta queries: is Alice a noun? -> does Alice belong to closure set N1?
-    Inductive grammar area
-            He did it.
-            I did it.
-            I like it.
-            He like it, *OK
-Meeting 2014-12-03:
-    Recursion: f(x) = f(x-1) + 2
-            but not f(x+1) = f(x) + 2
-    Closure set: not possible now
-            f(0) = 3000
-            f(1) = 5000
-            f(x+1) = f(x) + 2000 (2000 comes from closure of values on rhs on f(n) learned earlier)
-    Equivalence classes for language
-    Analogy reasoning. palm : hand :: x : foot
-                    palm under hand
-                    sole under foot
-                    
-                    asking questions: palm X hand
-                                      x    X foot
-                    find values for X and x.
-    
-    + Addition with XOR:
-        101 XOR 011 = 110
-        values in decimal
-    + Multiplication with XOR:
-        A [N], B [N]
-        A*B[k] = (sum(p+q=k) (A[p] * B[q])) % 2
-    
-    even and odd numbers
-        even 0 = T
-        even 2 = T
-        even (1#0) = 1 # even 0 = even 0 = T
-    Module operator: e.g. module 3
-    Does it learn: x = x - 3
-
-    Form closure set for recursive functions
-Meeting 2014-12-22:
-    Fix error: (x#y + z) -> (x#(y+z))   becomes False
-    1*1=1 and 0*0=0 should lead to x*x=x
-    2*2/=2 should remove x*x=x
-    implement simple search for finding substitutions in abduction problems
-    implement equivalence classes for symbols (for language domains)
-    Implement complex numbers: a + bi
-    car -> vehicle
-    svan(a) -> white(a):  swan problem
-Meeting 2014-01-08:
-    Take a course about "inductive grammar learning" or "language technology", get slides from Claes
-    - Try consistency=False
-    + Add divergence checking for shallow rules
-    heuristics for computations, performance tuning for bigger theories.
-    - distinct sets of symbols for different domains: using # to form numbers and some other symbol to form phrases.
-      then use only rules for one set of symbols, keep the other rules away
-    - to speed up learning of multiple domains by single agent.
-    finish number sequences
-Meeting 2014-01-13: 
-    + Revert (Back) button implemented: reverts to the last-saved agent (discards all unsaved changes)
-    + Number sequences: Adds the item directly if (1) is unary function (2) size lhs < 3 (3) not already in ltm
-    + They==House  should move to hypotheses section
-    + Debugging and recoding of parseAgent function. Shows errors or warnings in GUI
-    + Checking convergence instances for axioms is too complex: only convergence examples from instances (items) in use
-    + pattern should compute all previous examples correctly.
-Meeting 2015-01-27:
-    Learn: All ravens are black.
-    black(John) |- x(John)              -----> x=raven
- 
-Learning mode (auotmatic)
-Enquiry mode  (interactive mode)
-Goal: only constants and rewarded 
-
-Alice should be able to learn predicate logic (using variables)
-
-Fix: (x # (y # z))▶(x # (z + y))
-
--}
-
 module AliceLib where
-import System.Environment (getArgs, getProgName)
-import System.Random
-import Data.Array.IO
+
+import Instances
+import Interpreter
 import Parsing
+import TestData
+import Domains.Arithmetic
+import Domains.PropLogic
+import Domains.English
+
+import Control.Arrow
+import Control.Concurrent (forkIO,takeMVar,newEmptyMVar,putMVar)
+import Control.Parallel.Strategies
+import qualified Control.Monad.Parallel as P
+import Control.Monad (when,forM,liftM,filterM)
+
+import Data.Array.IO
 import Data.Ord
 import Data.Char
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Instances
-import Interpreter
 import Data.List
 import Data.Time
-import qualified Control.Monad.Parallel as P
-import Control.Monad (when,forM,liftM,filterM)
 import Data.Word
 import Data.Maybe
-import System.IO
-import System.Directory (doesFileExist)
 import Data.Maybe (isNothing)
 import Data.Function (on)
-import Control.Arrow
-import Control.Monad (foldM)
-import Control.Concurrent (forkIO,takeMVar,newEmptyMVar,putMVar)
-import Control.Parallel.Strategies
-import System.Timeout
-import System.Console.ANSI
-import TestData
 import Debug.Trace
 import Data.Time.Calendar
-import Domains.Arithmetic
-import Domains.PropLogic
-import Domains.English
+
+import System.Directory (doesFileExist)
+import System.Environment (getArgs, getProgName)
+import System.IO
+import System.Random
+import System.Timeout
+import System.Console.ANSI
+
 import Test.QuickCheck hiding (shuffle)
+
 
 type Concepts = Set Exp
 type Utility = Int
 type Delta = (Set Axiom,Set Axiom)
-
 type Verbose = Bool -- print results or not
 
 data Runtime = Continuous | Stepwise deriving Eq
-
-showScore :: Int
-showScore = 1000
 
 timeLimit = 100000000 -- microseconds, time limit for checking a delta
 
 decay = 0.5 -- decay parameter for long term memory
 
-normalizeOutput s' = if null s
-                     then s
-                     else let s2 = map fst $ filter (\(x,y) -> not (x==' ' && y==' ')) $ zip s (tail s)      -- "x  y" -> ("x  y","  y")
-                          in s2 ++ [last s]
-    where s = filter (\x -> x/='#' && x/='\\') s'
-
--- minimum number of examples for given number of variable count
-minExamples :: Int -> Int
-minExamples n | n < 1 = 1
-minExamples n = n + 1
+showScore = 1000 :: Int
 
 whiteVivid = SetColor Foreground Vivid White
 whiteDull  = SetColor Foreground Dull White
@@ -264,15 +60,34 @@ whiteDull  = SetColor Foreground Dull White
 -- | For example, the axiom (x*0=0) has one free variable.
 freeVariables = 1
 
+-- | Use abstraction (anti-unification) when d > 6
+useAbstraction = True
+
+
+-- minimum number of examples for given number of variable count
+minExamples :: Int -> Int
+minExamples n | n < 1 = 1
+minExamples n = n + 1
+
+
+normalizeOutput s' = if null s
+                     then s
+                     else let s2 = map fst $ filter (\(x,y) -> not (x==' ' && y==' ')) $ zip s (tail s)      -- "x  y" -> ("x  y","  y")
+                          in s2 ++ [last s]
+    where s = filter (\x -> x/='#' && x/='\\') s'
+
+
 showSolution :: [StateD] -> String
 showSolution [] = ""
 showSolution [x] = showState x
 showSolution (x:xs) = let x' = showState x
                       in x' ++ "\n--------\n" ++ showSolution xs
 
+
 showState :: StateD -> String
 showState (exp,Nothing,_) = showExp exp
 showState (exp,Just d, _) = showExp exp ++ ", using " ++ showAxiom d
+
 
 showExp :: Exp -> String
 showExp exp = let x = show exp
@@ -280,11 +95,12 @@ showExp exp = let x = show exp
                     then drop 1 (reverse . drop 1 . reverse $ x)
                     else x
 
-showAxiom (Axiom (_,_,_,_,_,(lhs,(dom,dir),rhs))) = dom ++ sourceDomain ++ showExp lhs ++ show dir ++ showExp rhs
--- | Use abstraction (anti-unification) when d > 6
-useAbstraction = True
+
+showAxiom (Axiom (_,_,_,_,_,(lhs,(dom,dir),rhs))) =
+    dom ++ sourceDomain ++ showExp lhs ++ show dir ++ showExp rhs
 
 maximum' i xx = if null xx then i else maximum xx
+
 
 runOnce :: Bool -> Verbose -> Agent -> Item -> IO (Agent,Bool,[(Int,Axiom)],([StateD],[(String,Exp)]))
 runOnce test vb agent@(Agent comm param (axioms,concepts,graph',pats',rew,rem)) item = do
@@ -296,22 +112,31 @@ runOnce test vb agent@(Agent comm param (axioms,concepts,graph',pats',rew,rem)) 
         let iter = if test then getIterations agent else 1 + getIterations agent
         return (setIterations newAgent iter,result,changes,(computation,subst))
 
+
 printNeg (Axiom (_,_,_,_,_,(lhs,dir,rhs)))
     = let result = take 40 . normalizeOutput $ '-' : (show lhs ++ show dir ++ show rhs)
       in result ++ take (40 - length result) (repeat ' ')
+
+
 printPos (Axiom (_,_,_,_,_,(lhs,dir,rhs)))
     = let result = take 40 . normalizeOutput $ '+' : (show lhs ++ show dir ++ show rhs)
       in result ++ take (40 - length result) (repeat ' ')
+
+
 printAxiom (Axiom (_,_,_,_,_,(lhs,dir,rhs)))
     = let result = take 40 . normalizeOutput $ (show lhs ++ show dir ++ show rhs)
       in result ++ take (40 - length result) (repeat ' ')
+
+
 printItem n s = let result = take n s
               in result ++ take (n - length result) (repeat ' ')
-    
+
+
 ifReadyDo :: Handle -> IO a -> IO (Maybe a)
 ifReadyDo hnd x = hReady hnd >>= f
    where f True = x >>= return . Just
          f _    = return Nothing
+
 
 -- | Saves an agent in a file
 saveAgent :: Bool -> Agent -> IO ()
@@ -343,6 +168,7 @@ saveAgent False (Agent (filename,comments) (width,depth,axiom,(redun,consis,mode
     hClose file
 --axiomaticity a1 a2 = compare (containsVarAx a1) (containsVarAx a2)
 
+
 createAgent :: String -> Int -> Int -> Int -> IO Bool
 createAgent name wmsize clen ltmsize = do
    exist <- doesFileExist name
@@ -368,6 +194,7 @@ createAgent name wmsize clen ltmsize = do
                 ",(\\v Mode)" ++ head deepRule ++ "(" ++ "Popper" ++ "))"
          ]
     return True
+
 
 updateGraph :: Graph Exp -> Set Pattern -> Set Concept -> LTM -> Set Rewarding
                 -> Int -> Int -> Bool -> Consistency -> Domain -> Map Exp (Substitution,Rhs)
@@ -492,6 +319,7 @@ updateGraph graph' pats' concepts ltm' rew width depth redun consis dom exps = d
     let graph2 = Map.mapWithKey func1 graph1
     return (graph2,pats)
 
+
 {-
 updateShape :: Set Shape -> Set Concept -> Set Axiom -> Set Rewarding
                 -> Int -> Int -> Exp -> (Shape,Substitution)
@@ -526,6 +354,7 @@ updateShape shapes' concepts ltm' rew width depth rhs (s@(Shape (shape1,vars1,li
     let list' = Map.unionWith Set.union list newList
     return (Shape (shape1,vars1,list'))
 -}
+
 
 computeByAnalogy :: UTCTime -> Agent -> Item -> IO String
 computeByAnalogy
@@ -599,7 +428,8 @@ computeByAnalogy
       return result'
   | otherwise = do
     return "No analogy: Left hand side must not contain a variable."
-    
+
+
 generateTranslations :: Domain -> Domain -> Int -> [(Int,String)] -> [Concept] -> [(Domain,[(Int,String,String)])]
 generateTranslations source target count cs concepts = 
   let singles = [ (i,c1,c2)
@@ -612,16 +442,19 @@ generateTranslations source target count cs concepts =
                       d2==target]
   in [(target,s) | i <- [1..count], s <- subseq singles i, unique s]
 
+
 unique :: [(Int,String,String)] -> Bool
 unique xs = f [(i,c) | (i,c,_) <- xs]
     where f [] = True
           f (x:xs) = not (elem x xs) && f xs
+
 
 subseq :: [a] -> Int -> [[a]]
 subseq xs      i | null xs || i < 0 || length (take i xs) < i =  []
 subseq _       0 = [[]]
 subseq xs      1 = [[x] | x <- xs]
 subseq (x:xs)  i = map (x:) (subseq xs (i-1)) ++ subseq xs i
+
 
 -- search for a suitable candidate to add to the long-term memory
 findDelta :: Bool -> Verbose -> UTCTime -> Agent -> Item -> 
@@ -918,6 +751,8 @@ findDelta test vb time
 -- [5,0,0],
 -- [6,0,0],[6,0,2],[6,0,6],[7,0,0],[7,0,1],[7,0,6],[8,0,0],[9,0,0],[9,0,6],[9,0,9]])
 -- satisfy (number of concepts) [["1","0"]] (variable count) consistentcy
+
+
 satisfy :: Int -> [[String]] -> Int -> Consistency -> Bool
 satisfy concepts values varCount consis | null values || varCount < 1 = False
 satisfy concepts values varCount consis | any (\x -> length x /= varCount) values = False
@@ -951,6 +786,7 @@ satisfy concepts values varCount consis =
         -- || length (nub' $ map snd result1') >= pass * (if concepts > 2 then 3 else 2)
         -- && length results2 >= pass
 
+
 findConvergence :: Verbose -> Int -> Int -> Set Concept -> LTM -> Set Rewarding -> Axiom -> [[String]]
 findConvergence _ _ _ _ _ _ ax | null (getVarsAx ax) = []
 findConvergence vb width depth concepts ltm rew ax@(Axiom (_,_,_,_,_,(x,(dom,dir),y))) =
@@ -976,10 +812,13 @@ findConvergence vb width depth concepts ltm rew ax@(Axiom (_,_,_,_,_,(x,(dom,dir
 
 -- result = replaceAllSubExp2 (Root "T") (Var "x") (Root "T")
 
+
 hasDivergence :: Verbose -> Int -> Int -> Set Concept -> LTM -> Set Rewarding -> Axiom -> IO Bool
 hasDivergence vb a b c d e f = --do result <- hasNoDivergence vb a b c d e f
                                --   return $ not result
                                return False
+
+
 -- (\x | \y),(\x)
 hasNoDivergence :: Verbose -> Int -> Int -> Set Concept -> LTM -> Set Rewarding -> Axiom -> IO Bool
 hasNoDivergence vb width depth concepts ltm' rew ax@(Axiom (_,_,_,_,_,(x,(dom,dir),y))) = do
@@ -1016,6 +855,7 @@ hasNoDivergence vb width depth concepts ltm' rew ax@(Axiom (_,_,_,_,_,(x,(dom,di
                        $ substitutions
     return $ and (map snd results)
 
+
 occam :: Verbose -> Width -> Depth -> Int -> [Item] -> [Item] -> Axiom
          -> Set Concept -> LTM -> Set Rewarding -> [Delta]
          -> IO (Maybe Delta)
@@ -1024,9 +864,11 @@ occam vb width depth optimumScore neg pos posAx concepts ltm rew delta = do
         let result = [(x,y,z) | Just (Just x,y,z,_) <- result']
         return . listToMaybe . map fst' . take 1 . sortBy preference $ result
 
+
 findInconsistent :: Verbose -> Int -> Int -> Set Concept -> Set Rewarding -> LTM -> IO (Set Axiom)
 findInconsistent vb width depth concepts rew ltm = -- return Set.empty
     (liftM Set.fromList) . filterM (hasDivergence vb width depth concepts ltm rew) $ Set.toList (allAxioms ltm)
+
 
 theoryUpdate :: Verbose -> Int -> Int -> Int
                 -> Set Concept -> Set Rewarding -> Graph Exp
@@ -1076,18 +918,22 @@ theoryUpdate vb width depth ltmSize concepts rew graph ltm rem delta = do
     let rem' = Set.toList $ Set.unions [neg,neg2,neg3,inconsistent]
     return $! (ltm6,changes,rem')
 
+
 -- for Language, the rhs must be a string
 rhsIsTag (Axiom (_,_,_,_,_,(_,_,Var _))) = True
 rhsIsTag _ = False
 
+
 lhsIsVar (Axiom (_,_,_,_,_,(Var _,_,_))) = True
 lhsIsVar _ = False
+
 
 lhsIsFuncVar (Axiom (_,_,_,_,_,(Unary _ (Var _),_,_))) = True
 lhsIsFuncVar _ = False
 
+
 lhsIsSame (Axiom (_,_,_,_,_,(x,_,_))) (Axiom (_,_,_,_,_,(p,_,_))) = x == p
------------------------
+
 
 ---------------------- Priority functions -------------------------------------
 deltaSmallest :: [Axiom] -> [([Axiom],Int,Int)] -> [([Axiom],Int,Int)]
@@ -1097,6 +943,7 @@ deltaSmallest _ deltas =
     let minSize = minimum [len | (_,_,len)  <- deltas]
     in  [(ax,perf,len) | (ax,perf,len) <- deltas, len == minSize]
 
+
 deltaMaxVarTokens :: [Axiom] -> [([Axiom],Int,Int)] -> [([Axiom],Int,Int)]
 deltaMaxVarTokens _ [] = []
 deltaMaxVarTokens _ [x] = [x]
@@ -1104,6 +951,7 @@ deltaMaxVarTokens _ deltas =
     let deltas' = [(ax,perf,len,sum (map countVars ax)) | (ax,perf,len)  <- deltas]
         maxVarCount = maximum [varCount | (ax,perf,len,varCount) <- deltas']
     in [(ax,perf,len) | (ax,perf,len,vars) <- deltas', vars == maxVarCount]
+
 
 deltaMinVarTypes :: [Axiom] -> [([Axiom],Int,Int)] -> [([Axiom],Int,Int)]
 deltaMinVarTypes _ [] = []
@@ -1113,15 +961,19 @@ deltaMinVarTypes _ deltas =
         maxVarCount = maximum [varCount | (ax,perf,len,varCount) <- deltas']
     in [(ax,perf,len) | (ax,perf,len,vars) <- deltas', vars == maxVarCount]
 
+
 preference = 
          preferUseful `och` preferSmallFact `och` preferSmallest `och` preferMaxUtility `och` preferMaxVarTokens `och` preferMinVarTypes
         --preferSmallest `och` preferMaxVarTokens `och` preferMinVarTypes
 
+
 preferUseful :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferUseful (_,b1,_) (_,b2,_) = compare b2 b1
 
+
 preferMaxUtility :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferMaxUtility (_,_,x) (_,_,y) = compare y x
+
 
 preferSmallFact :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferSmallFact ((x,_),_,_) ((y,_),_,_) | not (Set.null x || Set.null y)
@@ -1129,25 +981,30 @@ preferSmallFact ((x,_),_,_) ((y,_),_,_) | not (Set.null x || Set.null y)
                   (and . Set.toList $ Set.map isSmallFact x)
 preferSmallFact _ _ = EQ
 
+
 preferSmallest :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferSmallest ((x,_),_,_) ((y,_),_,_) | not (Set.null x || Set.null y) = compare (sum . Set.toList $ Set.map size x) (sum . Set.toList $ Set.map size y)
 preferSmallest _ _ = EQ
+
 
 preferMaxVarTokens :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferMaxVarTokens ((x,_),_,_) ((y,_),_,_) | not (Set.null x || Set.null y)
         = compare (Down . length $ concatMap getVarsAx $ Set.toList x) (Down . length $ concatMap getVarsAx $ Set.toList y)
 preferMaxVarTokens _ _ = EQ
 
+
 preferMinVarTypes :: (Delta,Bool,Int) -> (Delta,Bool,Int) -> Ordering
 preferMinVarTypes ((x,_),_,_) ((y,_),_,_) | not (Set.null x || Set.null y)
         = compare (length . nub' $ concatMap getVarsAx $ Set.toList x) (length . nub' $ concatMap getVarsAx $ Set.toList y)
 preferMinVarTypes _ _ = EQ
+
 
 och :: (a -> a -> Ordering) 
         -> (a -> a -> Ordering)
         -> a -> a -> Ordering
 och f1 f2 x y = if result1 == EQ then f2 x y else result1
     where result1 = f1 x y
+
 
 performance :: Int -> Int 
             -> Set Concept -> LTM -> Set Rewarding
@@ -1175,6 +1032,7 @@ performance width depth concepts ltm rew negEx posEx posAx d@(posFunc,negFunc) =
         then return $ (Just d,useful,util,compSize)
         else return $ (Nothing,useful,util,compSize)
 
+
 generateMixedAxioms :: UTCTime -> Set Concept -> Domain -> [Axiom]
 generateMixedAxioms time concepts' dom =
     let v = makeV "x"
@@ -1186,6 +1044,7 @@ generateMixedAxioms time concepts' dom =
         exps2 = [Axiom (0,1,False,time,time,(exp,(dom,Bi),v)) | i <- [2..4], c <- consts, exp <- generateExps i [v,c] unary binary]
         exps = nub' . filter isMixed $ exps1 ++ exps2
     in  exps
+
 
 generateAlgebraic :: UTCTime -> [Concept] -> [Axiom]
 generateAlgebraic time concepts = 
@@ -1200,6 +1059,7 @@ generateAlgebraic time concepts =
                                        x <- fromMaybe [] (lookup i exps'),
                                        y <- fromMaybe [] (lookup j exps')]
     in  exps
+
 
 -- generate recursive axioms
 -- one base case from IP
@@ -1248,10 +1108,13 @@ generateFuncsRec ltm width depth special time concepts' base@(Axiom (_,_,_,_,_,(
             result
 generateFuncsRec _ _ _ _ _ _ _ = []
 
+
 isRecursiveRhs (Unary _ (Var _)) = True
 isRecursiveRhs (Unary _ (Binary _ (Var _) (Root _))) = True
 isRecursiveRhs (Binary _ a (Root _)) = isRecursiveRhs a
 isRecursiveRhs _ = False
+
+
 -- generate abstractions of given axioms
 -- e.g. for 1+(2+3), it returns x+(2+3), x+(y+z), etc.
 generateFuncsAbs :: UTCTime -> [Axiom] -> Domain -> [Axiom]
@@ -1273,11 +1136,13 @@ generateFuncsAbs time axioms dom =
     in filter (containsVar . axLhs) exps
     --in filter (\(Axiom x y _) -> notnull [x | x@(Var _) <- getSubExp x]) exps
 
+
 -- generate facts
 generateFacts :: UTCTime -> Int -> [Concept] -> [Axiom]
 generateFacts _ _ [] = []
 generateFacts _ len _ | len < 3 || len > 6 = []
 generateFacts time n concepts = concat [generateFacts' time n d concepts | C (_,_,_,_,_,d,_) <- concepts]
+
 
 generateFacts' time 3 dom concepts = 
     let consts = nub' [exp | C (arit,_,freq,_,_,d',exp) <- concepts, arit==0,dom==d']
@@ -1310,6 +1175,7 @@ generateFacts' time 6 d'' concepts =
                           e <- consts,  f <- consts]
     in filter isFact facts
 
+
 generateRelevant :: UTCTime -> [Concept] -> [Axiom]
 generateRelevant _ [] = []
 generateRelevant time concepts = 
@@ -1325,7 +1191,8 @@ generateRelevant time concepts =
                             | c <- consts, b <- binary,
                               v1 <- vars, v2 <- vars]
     in concat [relevant d | d <- domains]
-        
+
+
 -- generate all axioms of given size
 generateFuncsAll :: UTCTime -> [Concept] -> Int -> [Item] -> [Axiom]
 generateFuncsAll _ _  len _   | len < 2 = []
@@ -1350,6 +1217,7 @@ generateFuncsAll time concepts len pos =
                         not (size p == 1 && size q == 1)
                   ]
     in  nub' result
+
 
 generateExpsRec :: Int -> [Exp] -> [Exp] -> [Exp] -> [Exp] -> [Exp]
 generateExpsRec len _  _     _  _ | len < 0 = []
@@ -1385,6 +1253,7 @@ generateExpsRec len fs units f1 f2
                     | Root op <- f1,
                       x <- exps1]
 
+
 generateExps :: Int -> [Exp] -> [Exp] -> [Exp] -> [Exp]
 generateExps len _ _ _ | len < 1 = []
 generateExps 1 units _ _ = units
@@ -1402,6 +1271,7 @@ generateExps len units funcs1 funcs2
               | (Root op) <- funcs1,
                 arg <- exps1]
 
+
 -- get free variables, those that occur in lhs but not in rhs
 freeVars :: Axiom -> [Exp]
 freeVars f@(Axiom (_,_,_,_,_,(t,_,t'))) =
@@ -1409,13 +1279,14 @@ freeVars f@(Axiom (_,_,_,_,_,(t,_,t'))) =
         lhsvars = getVars t'
     in map makeR $ nub' [v | v <- lhsvars, not (v `elem` rhsvars)]
 
+
 generate :: Gen a -> IO a
 generate g = do
     values <- sample' g
     return $ head values
 
 
-filterP          :: (a -> IO Bool) -> [a] -> IO [a]
+filterP :: (a -> IO Bool) -> [a] -> IO [a]
 filterP _ []     =  return []
 filterP p (x:xs) =  do
     vb <- newEmptyMVar
@@ -1423,6 +1294,7 @@ filterP p (x:xs) =  do
     forkIO (filterP p xs >>= putMVar vb)
     ys <- takeMVar vb
     return (if flg then x:ys else ys)
+
 
 shuffle :: [a] -> IO [a]
 shuffle xs = do
@@ -1438,10 +1310,12 @@ shuffle xs = do
     newArray :: Int -> [a] -> IO (IOArray Int a)
     newArray n xs =  newListArray (1,n) xs
 
+
 partitionM :: (a -> IO Bool) -> [a] -> IO ([a],[a])
 partitionM p xs = do
         (left,right) <- foldM (select p) ([],[]) xs
         return (reverse left, reverse right)
+
 
 select :: (a -> IO Bool) -> ([a], [a]) -> a -> IO ([a], [a])
 select p ~(ts,fs) x =

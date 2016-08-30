@@ -3,25 +3,25 @@
 -- Author: Abdul Rahim Nizamani, ITIT, Gothenburg University, Sweden
 
 -}
-
 module Interpreter where
 
 import Instances
-import Data.Graph.AStar
-import Data.Either
-import qualified Data.Set as Set
-import Data.Maybe (fromJust)
-import Debug.Trace
-import Data.Maybe
-import qualified Data.Map as Map
+
 import Control.Exception
-import Data.List
-import Data.Time.Clock
 import Control.Monad
 import qualified Control.Monad.Parallel as P
+import Data.Either
 import Data.Function (on)
+import Data.Graph.AStar
+import Data.List
+import qualified Data.Map as Map
+import Data.Maybe
+import qualified Data.Set as Set
+import Data.Time.Clock
+import Debug.Trace
 
 type Surface = Bool
+
 
 -- check if the answer is the same as given, using Astar search
 findAnswerDecl :: Set.Set Concept -> LTM -> Set.Set Rewarding -> Int -> Int -> (Domain,Lhs,Rhs) -> (Bool,Length)
@@ -29,6 +29,7 @@ findAnswerDecl concepts ltm rew width depth (dom,exp,rhs) =
             let ltm' = filterLtm dom ltm
                 (ans, len) = solveAnswer width depth concepts ltm' rew (exp,Nothing,Set.empty) (Just rhs)
             in ((isJust ans && (fromJust ans == rhs)), len)
+
 
 -- find the solution (all proof steps) using the Astar search
 findSolution :: Set.Set Concept -> LTM -> Set.Set Rewarding -> Int -> Int -> (Lhs,Rhs) -> [StateD]
@@ -45,6 +46,7 @@ findSolution concepts ltm rew width depth (exp,rhs) =
             then (exp,Nothing,Set.empty) : fromJust ans
             else []
 
+
 getAnswer :: Int -> Int -> Set.Set Concept -> LTM -> Set.Set Rewarding -> Exp -> Maybe Exp
 getAnswer width depth concepts mod rew start =
     if isRoot start
@@ -58,6 +60,7 @@ getAnswer width depth concepts mod rew start =
               in if null result'
                   then Nothing
                   else Just . fst' $ last result'
+
 
 solveAnswer :: Int -> Int -> Set.Set Concept
                 -> LTM -> Set.Set Rewarding -> StateD
@@ -75,7 +78,9 @@ solveAnswer width depth concepts mod rew start end =
                         (ans,_,_) = last result'
                     in (Just ans, len)
 
+
 solve = aStarIterative 1
+
 
 aStarSimple :: Int -> Int -> Int ->
                   Set.Set Concept -> LTM -> Set.Set Rewarding -> 
@@ -83,6 +88,7 @@ aStarSimple :: Int -> Int -> Int ->
 aStarSimple startDepth width maxDepth concepts mod rew start end 
         = aStar (expandNode mod width maxDepth)
                 stateDist (hDist rew) (isGoal mod width maxDepth rew end) start
+
 
 aStarIterative :: Int -> Int -> Int 
                   -> Set.Set Concept -> LTM -> Set.Set Rewarding 
@@ -96,9 +102,11 @@ aStarIterative startDepth width maxDepth concepts mod rew start end =
             then result
             else aStarIterative (startDepth+1) width maxDepth concepts mod rew start end 
 
+
 varBindings :: Axiom -> [(String,Exp)]
 varBindings (Axiom (_,_,_,_,_,((Var q),_,exp))) = [(q,exp)]
 varBindings _ = []
+
 
 -- (Either String (Exp,Maybe Axiom), Set Exp)
 stateDist ::  StateD -> StateD -> Int
@@ -106,18 +114,23 @@ stateDist (e,_,_) (f,_,_) | e == f = 0
 stateDist _ _ = 1 -- minimum length
 --stateDist (_,Just a1,_) (_,Just a2,_) = return (axV a2 - axV a1)
 
+
 hDist :: Set.Set Rewarding -> StateD -> Int
 hDist r (exp,_,_) = length [f | f <- getSymbols exp, (Rew f) `Set.notMember` r]
+
 
 isGoal :: LTM -> Int -> Int -> Set.Set Rewarding -> Maybe Exp -> StateD -> Bool
 isGoal _ _ _ _ (Just goal) (wm,_,_)    = wm == goal
 isGoal ltm width depth rewarding Nothing state@(r,_,_) = isGoal' rewarding r && Set.null (expandNode ltm width depth state)
 --        let symbols = Set.fromList . map Rew $ getSymbols r
 --        in isGoal' wm && symbols `Set.isSubsetOf` rewarding
+
+
 isGoal' rew (Root r) = Set.member (Rew (0,r)) rew
 isGoal' rew (Unary (Oper u) e) = Set.member (Rew (1,u)) rew && isGoal' rew e
 isGoal' rew (Binary (Oper b) e (Root r)) = Set.member (Rew (2,b)) rew && Set.member (Rew (0,r)) rew && isGoal' rew e
 isGoal' _ _ = False
+
 
 expandNode :: LTM -> Int -> Int -> StateD -> Set.Set StateD
 expandNode _ _ maxLength (_,_,prev) | Set.size prev >= maxLength   =    Set.empty
@@ -139,6 +152,7 @@ expandNode m maxSize maxLength (exp,_,p) =
         traced = "\nExp: " ++ show exp ++ "\n" ++ unlines (map ("   " ++ ) $ map show [r |(r,_) <- right])
     in --trace traced
         (Set.fromList $ map (\(x,y) -> (x,y,prev)) right)
+
 
 -- | Interprets any haskell expression from the given module
 -- Only produces a single step
@@ -169,6 +183,7 @@ interpreter b ltm@(Ltm facts axioms) width depth e@(Binary op e1 e2) =
 -- Literal and variable
 interpreter _ _ _ _ e = [(e,Nothing)] -- concatMap (applyRule e) axioms
 
+
 applyFact :: Surface -> WM -> Fact -> [(WM,Maybe Fact)]
 applyFact _ wm a@(Axiom (_,_,_,_,_,(lhs,(_,Bi),rhs)))
   | wm == lhs = [(rhs,Just a)]
@@ -181,6 +196,8 @@ applyFact b wm a@(Axiom (_,_,_,_,_,(lhs,(_,Uni),rhs))) -- surface application of
   | otherwise = []
 applyFact b wm a@(Axiom (_,_,_,_,_,(lhs,(_,Neg),rhs))) -- negative rules
     = []
+
+
 -- | Check if the function argument matches with the given expression
 applyRule :: Surface -> WM -> Axiom -> [(WM,Maybe Axiom)]
 applyRule _ func a@(Axiom (_,_,_,_,_,(lhs,(_,Bi),rhs)))
@@ -205,4 +222,3 @@ notProvable :: Axiom -> [Axiom] -> Bool
 notProvable ax axioms | (not . containsVarAx) ax = True
 notProvable ax@(Axiom (_,_,_,_,_,_)) axioms = 
      not $ any (isInstance ax) axioms
-

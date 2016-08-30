@@ -1,3 +1,6 @@
+{-
+    The following code has been adapted from one of the standard libraries.
+-}
 module AStar (aStar) where
 
 import qualified Data.Set as Set
@@ -8,6 +11,7 @@ import qualified Data.PSQueue as PSQ
 import Data.PSQueue (PSQ, Binding(..), minView)
 import Data.List (foldl')
 
+
 data AStar a c = AStar { visited  :: !(Set a),
                          waiting  :: !(PSQ a c),
                          score    :: !(Map a c),
@@ -15,13 +19,15 @@ data AStar a c = AStar { visited  :: !(Set a),
                          cameFrom :: !(Map a a),
                          end      :: !(Maybe a) }
     deriving Show
-    
+
+
 aStarInit start = AStar { visited  = Set.empty,
                           waiting  = PSQ.singleton start 0,
                           score    = Map.singleton start 0,
                           memoHeur = Map.empty,
                           cameFrom = Map.empty,
                           end      = Nothing }
+
 
 runAStar :: (Ord a, Ord c, Num c) =>
          (a -> Set a)     -- adjacencies in graph
@@ -30,7 +36,6 @@ runAStar :: (Ord a, Ord c, Num c) =>
          -> (a -> Bool)   -- goal
          -> a             -- starting vertex
          -> AStar a c     -- final state
-
 runAStar graph dist heur goal start = aStar' (aStarInit start)
   where aStar' s
           = case minView (waiting s) of
@@ -57,6 +62,7 @@ runAStar graph dist heur goal start = aStar' (aStarInit start)
                  score    = Map.insert y v (score s),
                  waiting  = PSQ.insert y (v + memoHeur s ! y) (waiting s) }
 
+
 -- | This function computes an optimal (minimal distance) path through a graph in a best-first fashion,
 -- starting from a given starting point.
 aStar :: (Ord a, Ord c, Num c) =>
@@ -80,14 +86,15 @@ aStar graph dist heur goal start
   where
     results = runAStar graph dist heur goal start
 
+
 plane :: (Integer, Integer) -> Set (Integer, Integer)
 plane (x,y) = Set.fromList [(x-1,y),(x+1,y),(x,y-1),(x,y+1)]
+
 
 planeHole :: (Integer, Integer) -> Set (Integer, Integer)
 planeHole (x,y) = Set.filter (\(u,v) -> planeDist (u,v) (0,0) > 10) (plane (x,y))
 
+
 planeDist :: (Integer, Integer) -> (Integer, Integer) -> Double
 planeDist (x1,y1) (x2,y2) = sqrt ((x1'-x2')^2 + (y1'-y2')^2)
     where [x1',y1',x2',y2'] = map fromInteger [x1,y1,x2,y2]
-
-

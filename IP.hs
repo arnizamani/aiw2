@@ -1,6 +1,4 @@
 --    Environment for OccamStar 4
---    By Abdul Rahim Nizamani
-
 
 Notes:
 --Rewarded symbols: 0,1,2,... and #, but not + and * (those that appear in rhs of items).
@@ -15,7 +13,6 @@ Notes:
 --update structure of shape, use maps or sets
 
 --Use axiom recency when removing axioms (when viabilities are same)
-
 
 
 Suggestion:

@@ -3,22 +3,24 @@
 -------------------------------------------------------------------------------
 
 module Parsing where
+
 import Instances
 
-import Text.ParserCombinators.ReadP
-import Data.List
-import Data.Word
+import Control.Monad (liftM)
 import Data.Char
-import Data.Time
-import Data.Maybe
+import Data.Function (on)
+import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
-import System.IO
-import Control.Monad (liftM)
-import Data.Function (on)
+import Data.Time
+import Data.Word
 import Debug.Trace
+import System.IO
+import Text.ParserCombinators.ReadP
+
 
 emptyTime = read "2014-08-30 17:05:15.1653868 UTC" :: UTCTime
 
@@ -40,6 +42,7 @@ x + y
 
 l = read "((1 * 3) + (1 * 4))" :: Exp
 r = read "(7)" :: Exp
+
 
 -- get all term shapes from the set of examples
 makeShapes :: (Lhs,Rhs) -> Map Exp (Substitution,Rhs)
@@ -71,6 +74,7 @@ makeShapes (exp,rhs) =
                 then error $ "makeShapes: empty result " ++ show exp ++ "::" ++ show rhs
                 else result
 
+
 extractConcepts :: UTCTime -> Item -> [Concept]
 extractConcepts time (Item d lhs _   r _) | r < 1
     =    [C (0,0,1,time,time,d,makeR c) | c <- getConsts lhs]
@@ -83,6 +87,8 @@ extractConcepts time (Item d lhs rhs _ _)
       ++ [C (0,1,1,time,time,d,makeR c) | c <- getConsts rhs]
       ++ [C (1,1,1,time,time,d,makeR u) | u <- getUnary rhs]
       ++ [C (2,1,1,time,time,d,makeR b) | b <- getBinary rhs]
+
+
 insertInConcepts :: Set Concept -> Concept -> Set Concept
 insertInConcepts cs c@(C (a,rew,f,_,last',d,e)) =
     let c' = findElem c cs
@@ -91,15 +97,21 @@ insertInConcepts cs c@(C (a,rew,f,_,last',d,e)) =
         else let Just (C (_,rew',freq,f',_,_,_)) = c'
              in Set.insert (C (a,max rew rew',f+freq,f',last',d,e)) cs
 
+
 parseItemsFile :: FilePath -> IO [Item]
 parseItemsFile itemsFile = do
         text <- readFileSafe itemsFile utf8
         return [item | (Just item) <- [maybeRead l | l <- map strip (lines text), not (null l), take 1 l /= "-"] ]
-        
+
+
 isVar (Var _) = True
 isVar _       = False
+
+
 type Error = String
 type Warnings = [String]
+
+
 -- | Read and parse an agent from a file
 parseAgent :: FilePath -> IO (Either Error (Warnings,Agent))
 parseAgent f = do
@@ -207,11 +219,13 @@ parseAgent f = do
                                       (makeLTM axioms,concepts,graph,patt,rew,[])
                               )
 
+
 getParam :: String -> Set Axiom -> String
 getParam s axioms = let r = [x | (Axiom (0,0,True,_,_,(Var s',(_,Bi),(Root x)))) <- (Set.toList axioms), s == s']
                     in if null r
                         then ""
                         else head r
+
 
 findInfixIndex :: (Eq a) => [a] -> [a] -> Maybe Int
 findInfixIndex needle haystack
@@ -219,10 +233,12 @@ findInfixIndex needle haystack
       . dropWhile (\(_,x) -> not $ isPrefixOf needle x) 
         $ zip [0..] (tails haystack)
 
+
 prettyIP :: Item -> String
 prettyIP (Item d p e v Nothing) = d ++ "::" ++ show p ++ " = " ++ show e ++ ", " ++ show v
 prettyIP (Item d p e v (Just "")) = d ++ "::" ++ show p ++ " = " ++ show e ++ ", " ++ show v
 prettyIP (Item d p e v (Just t)) = d ++ "::" ++ show p ++ " = " ++ show e ++ ", " ++ show v ++ "::" ++ t
+
 
 readChar :: ReadP Char
 readChar = do
@@ -250,8 +266,11 @@ readStrU str = do
         c <- readChar
         readStrU $ str ++ [c]
 -}
+
+
 readStrQ :: ReadP String -- quoted string, e.g. "str"
 readStrQ = between (char '"') (char '"') (many readChar)
+
 
 readStr :: ReadP String -- string, with or without quotes
 readStr = do
@@ -260,7 +279,9 @@ readStr = do
     then pfail
     else return str
 
+
 readVarX x = string x >> return (Var x)
+
 
 readVarV :: ReadP Exp
 readVarV = readbracketed $ do
@@ -272,8 +293,10 @@ readVarV = readbracketed $ do
     skipSpaces
     return $ makeV v
 
+
 readVar :: ReadP Exp
 readVar = readVarX "x" <++ readVarX "y" <++ readVarX "z" <++ readVarV
+
 
 readUnary :: ReadP Exp
 readUnary = between (char '(') (char ')') $ do
@@ -284,6 +307,7 @@ readUnary = between (char '(') (char ')') $ do
     e <- readExp'
     skipSpaces
     return $ Unary s e
+
 
 readBinary :: ReadP Exp
 readBinary = between (char '(') (char ')') $ do
@@ -298,20 +322,24 @@ readBinary = between (char '(') (char ')') $ do
     skipSpaces
     return $ Binary s e1 e2
 
+
 readRoot :: ReadP Exp
 readRoot = between (char '(') (char ')') $ do
     skipSpaces
     s <- readStr
     skipSpaces
     return $ makeR s
-   
+
+
 readExp' :: ReadP Exp
 readExp' = 
     readVar <++ readBinary <++ readUnary <++ readRoot <++ (readStr >>= return . makeR)
 
+
 readExp1, readExp2, readExpMain :: ReadP Exp
 readExp1 = readbracketed readExp' <++ readExp'
 readExp2 = readExp' <++ readbracketed readExp'
+
 
 readExpMain = 
               (do   e1 <- readExp'          -- read binary without brackets
@@ -336,6 +364,7 @@ readExpMain =
               <++ (readStr >>= return . makeR)  -- read root without brackets
               <++ readRoot                      -- read root with brackets
 
+
 readOper :: ReadP Oper
 readOper = do
     (char 'x' >> return (OVar "x"))
@@ -344,6 +373,8 @@ readOper = do
     <++
     (do s <- readStr
         return (Oper s))
+
+
 readbracketed :: ReadP a -> ReadP a
 readbracketed p = do
     do  skipSpaces
@@ -353,6 +384,8 @@ readbracketed p = do
         char ')'
         skipSpaces
         return result
+
+
 -- (A,-0.9663303236975398,2,True,2015-01-28 11:20:49.5753238 UTC,2015-01-28 11:20:49.6534517 UTC,((1 # 7) + 2),▶,(1 # 9))
 readAxiom :: ReadP Axiom
 readAxiom = between (string "(A,") (char ')') $ do
@@ -377,11 +410,14 @@ readAxiom = between (string "(A,") (char ')') $ do
     then pfail
     else return $ Axiom (fromJust v',f,isfact,fromJust first',fromJust last',(e1,(domain,dir),e2))
 
+
 instance Read Exp where
     readsPrec _ s = readP_to_S readExpMain s
 
+
 instance Read Axiom where
     readsPrec _ s = readP_to_S readAxiom s
+
 
 -- 0,1,4,2015-01-28 10:56:16.9863506 UTC,2015-01-28 10:56:23.3150524 UTC,(-1)
 readConcept :: ReadP Concept
@@ -409,8 +445,10 @@ readConcept = between (string "(C,") (char ')') $ do
       then pfail
       else return $ C (arity,rew,freq,fromJust first',fromJust last',d,exp)
 
+
 instance Read Concept where
     readsPrec _ s = readP_to_S readConcept $ strip s
+
 
 readEdge :: ReadP Edge
 readEdge = between (string "(E,") (string ")") $ do
@@ -426,11 +464,15 @@ readEdge = between (string "(E,") (string ")") $ do
     char ','
     list <- between (char '[') (char ']') $ sepBy readConstArray (char ',')
     return $ Edge (d,e1,e2,b,Set.fromList list)
+
+
 readConstArray :: ReadP [String]
 readConstArray = between (char '[') (char ']') (sepBy readStr (char ','))
 
+
 instance Read Edge where
     readsPrec _ s = readP_to_S readEdge $ strip s
+
 
 readItems :: ReadP Items
 readItems = do 
@@ -438,6 +480,7 @@ readItems = do
     skipSpaces
     eof
     return $ Items items
+
 
 readDomain :: ReadP String
 readDomain = do
@@ -447,6 +490,7 @@ readDomain = do
     char '⊨'
     return domain
 
+
 readTargetDomain :: ReadP String
 readTargetDomain = do
     domain <- munch (\x -> not (isSpace x))
@@ -454,16 +498,19 @@ readTargetDomain = do
     return domain
 
 
+
 readTarget1 :: ReadP (Maybe String)
 readTarget1 = do
     eof
     return Nothing
+
 
 readTarget2 :: ReadP (Maybe String)
 readTarget2 = do
     string targetDomain
     t <- readTargetDomain
     return (Just t)
+
 
 
 readItem :: ReadP Item
@@ -479,10 +526,12 @@ readItem = do
     dom <- readTarget1 <++ readTarget2
     return $ Item domain lhs rhs viab dom
 
+
 readPosInt :: ReadP Int
 readPosInt = do
     digits <- munch1 isDigit
     return (read digits :: Int)
+
 
 readNegInt :: ReadP Int
 readNegInt = do
@@ -490,26 +539,36 @@ readNegInt = do
     digits <- munch1 isDigit
     return $ 0 - (read digits :: Int)
 
+
 readInt = readNegInt <++ readPosInt
+
 
 readDir :: ReadP Dir
 readDir = readDirBi <++ readDirUni <++ readDirNeg
+
 
 readDirBi  = choice (map string deepRule) >> return Bi
 readDirUni = choice (map string shallowRule) >> return Uni
 readDirNeg = choice (map string negativeRule) >> return Neg
 
+
 instance Read Dir where
     readsPrec _ s = readP_to_S readDir s
 
+
 readDouble = readNegDouble <++ readPosDouble
+
+
 readPosDouble = do
     value <- readDouble' <++ (readPosInt >>= (\r -> return $ fromIntegral r))
     return value
+
+
 readNegDouble = do
     char '-'
     value <- readDouble' <++ (readPosInt >>= (\r -> return $ fromIntegral r))
     return $ 0 - value
+
 
 readDouble' = do
     digits1 <- munch1 isDigit
@@ -517,11 +576,14 @@ readDouble' = do
     digits2 <- munch1 isDigit
     return $ (read (digits1 ++ "." ++ digits2) :: Double)
     
+
 instance Read Item where
     readsPrec _ s = readP_to_S readItem $ strip s
 
+
 instance Read Items where
     readsPrec _ s = readP_to_S readItems $ strip s
+
 
 readRewarding :: ReadP Rewarding
 readRewarding = do
@@ -532,22 +594,31 @@ readRewarding = do
     string ")"
     return $ Rew (arity,symbol)
 
+
 instance Read Rewarding where
     readsPrec _ s = readP_to_S readRewarding $ strip s
+
 
 instance Show Mode where
     show Popper = "Popper"
     show Einstein = "Einstein"
+
+
 instance Read Mode where
     readsPrec _ s = readP_to_S readMode $ strip s
     
+
 readMode :: ReadP Mode
 readMode = (string "Popper" >> return Popper) <++ (string "Einstein" >> return Einstein)
 
+
 maybeRead :: Read a => String -> Maybe a
 maybeRead = fmap fst . listToMaybe . reads
+
+
 readMaybe :: Read a => String -> Maybe a
 readMaybe = maybeRead
+
 
 updateRewarding :: Set Rewarding -> Item -> Set Rewarding
 updateRewarding s (Item _ _ y _ _) = 
@@ -556,10 +627,12 @@ updateRewarding s (Item _ _ y _ _) =
         binary = map (\x -> Rew (2,x)) $ getBinary y
     in Set.union s $ Set.fromList (consts ++ unary ++ binary)
 
+
 readTruth :: ReadP Truth
 readTruth = (string "Invalid" >> return Invalid) 
             <++ (string "Satisfiable" >> return Satisfiable) 
             <++ (string "Valid" >> return Valid)
+
 
 instance Read Truth where
     readsPrec _ s = readP_to_S readTruth $ strip s
