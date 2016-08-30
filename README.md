@@ -7,3 +7,9 @@
 This version extends the original AIW with analogical reasoning, and was presented in the Ninth AGI Conference 2016 (http://agi-conf.org/2016/).
 
 The source has been compiled and tested on Ubuntu and Windows, but has complex dependencies. It requires cabal sandbox to properly install correct versions of the required libraries.
+
+##Dependencies
+
+* This program requires the Gtk+ graphics library and its Haskell binding Gtk2Hs.
+
+* If you want to modify the user interface, use Glade (https://glade.gnome.org/).
